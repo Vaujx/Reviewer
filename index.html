@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHP Code Review Guide</title>
+    <h1>Made with yours truly, Jj</h1><p>donate coffee: 09669670979</p>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #16a085;
+        }
+        code {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
+            font-size: 0.9em;
+            padding: 2px 4px;
+        }
+        pre {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 10px;
+            overflow-x: auto;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        .toc {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .toc ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .toc ul ul {
+            padding-left: 20px;
+        }
+
+        p { 
+            color: #16a085;
+        }
+    </style>
+</head>
+<body>
+    <h1>PHP Code Review Guide</h1>
+
+    <div class="toc">
+        <h2>Table of Contents</h2>
+        <ul>
+            <li><a href="#include-statements">1. Include Statements</a></li>
+            <li><a href="#variable-checks">2. Variable Checks (isset, empty)</a></li>
+            <li><a href="#post-get-methods">3. POST/GET Methods</a></li>
+            <li><a href="#loops">4. Loops</a></li>
+            <li><a href="#switch-cases">5. Switch Cases</a></li>
+            <li><a href="#common-pitfalls">Common PHP Pitfalls to Review</a></li>
+        </ul>
+    </div>
+
+    <h2 id="include-statements">1. Include Statements</h2>
+
+    <h3>include vs include_once</h3>
+    <pre><code>// include will include the file every time it's called
+include 'file.php';  // Included every time this line is executed
+
+// include_once will only include the file if it hasn't been included before
+include_once 'file.php';  // Only included once, regardless of how many times this line is executed</code></pre>
+
+    <h3>Best Practices:</h3>
+    <ul>
+        <li>Use <code>include_once</code> or <code>require_once</code> to prevent duplicate function definitions and variable declarations</li>
+        <li>Use absolute paths or paths relative to a known constant</li>
+        <li>Use <code>require</code> or <code>require_once</code> when the file is essential for the application</li>
+        <li>Use <code>include</code> or <code>include_once</code> when the file is optional</li>
+    </ul>
+
+    <h3>Common Issues:</h3>
+    <ul>
+        <li>Using relative paths that change based on execution context</li>
+        <li>Not checking if files exist before including them</li>
+        <li>Including the same file multiple times causing redeclaration errors</li>
+        <li>Using dynamic includes without proper validation</li>
+    </ul>
+
+    <h2 id="variable-checks">2. Variable Checks (isset, empty)</h2>
+
+    <h3>isset() vs empty()</h3>
+    <pre><code>// isset() checks if a variable is declared and not null
+isset($var);  // Returns true if $var exists and is not null
+
+// empty() checks if a variable is empty (0, "", null, false, [], etc.)
+empty($var);  // Returns true if $var is empty or doesn't exist</code></pre>
+
+    <h3>Modern Alternatives:</h3>
+    <pre><code>// Null coalescing operator (??)
+$username = $_POST['username'] ?? 'Guest';  // Use 'Guest' if $_POST['username'] is not set or is null
+
+// Null coalescing assignment operator (??=)
+$count ??= 0;  // Assign 0 to $count if it's null or not set</code></pre>
+
+    <h3>Best Practices:</h3>
+    <ul>
+        <li>Use <code>isset()</code> to check if a variable exists before using it</li>
+        <li>Use <code>empty()</code> when you need to check if a variable has any meaningful value</li>
+        <li>Be aware that <code>empty()</code> returns true for "0" as a string</li>
+        <li>Use the null coalescing operator for simple default value assignments</li>
+        <li>Always validate user input, don't just check if it exists</li>
+    </ul>
+
+    <h2 id="post-get-methods">3. POST/GET Methods</h2>
+
+    <h3>Accessing Request Data</h3>
+    <pre><code>// Accessing POST data
+$username = $_POST['username'];  // Direct access (unsafe)
+$username = $_POST['username'] ?? '';  // With default value
+$username = isset($_POST['username']) ? $_POST['username'] : '';  // Traditional check
+
+// Accessing GET data
+$id = $_GET['id'];  // Direct access (unsafe)
+$id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);  // Filtered input</code></pre>
+
+    <h3>Security Best Practices:</h3>
+    <ul>
+        <li>Never trust user input from $_POST, $_GET, or $_REQUEST</li>
+        <li>Always validate and sanitize input data</li>
+        <li>Use <code>filter_input()</code> or <code>filter_var()</code> for validation</li>
+        <li>Prefer explicit $_POST or $_GET over $_REQUEST for clarity</li>
+        <li>Use prepared statements for database queries</li>
+        <li>Implement CSRF protection for forms</li>
+    </ul>
+
+    <h3>Input Validation Examples:</h3>
+    <pre><code>// Validating an email
+$email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
+if (!$email) {
+    // Invalid email handling
+}
+
+// Validating and sanitizing a string
+$name = filter_input(INPUT_POST, 'name', FILTER_SANITIZE_STRING);
+
+// Validating an integer with range
+$age = filter_input(INPUT_POST, 'age', FILTER_VALIDATE_INT, [
+    'options' => ['min_range' => 1, 'max_range' => 120]
+]);</code></pre>
+
+    <h2 id="loops">4. Loops</h2>
+
+    <h3>Types of Loops</h3>
+
+    <h4>for loop</h4>
+    <pre><code>// For loop with counter
+for ($i = 0; $i < 10; $i++) {
+    echo $i;
+}</code></pre>
+
+    <h4>foreach loop</h4>
+    <pre><code>// Foreach loop for arrays
+$colors = ['red', 'green', 'blue'];
+foreach ($colors as $color) {
+    echo $color;
+}
+
+// Foreach with key and value
+$user = ['name' => 'John', 'age' => 30];
+foreach ($user as $key => $value) {
+    echo "$key: $value";
+}</code></pre>
+
+    <h4>while loop</h4>
+    <pre><code>// While loop
+$i = 0;
+while ($i < 10) {
+    echo $i;
+    $i++;
+}</code></pre>
+
+    <h4>do-while loop</h4>
+    <pre><code>// Do-while loop (always executes at least once)
+$i = 0;
+do {
+    echo $i;
+    $i++;
+} while ($i < 10);</code></pre>
+
+    <h3>Best Practices:</h3>
+    <ul>
+        <li>Use <code>foreach</code> for arrays when possible (cleaner and less error-prone)</li>
+        <li>Always ensure loop conditions can eventually be false to avoid infinite loops</li>
+        <li>Use <code>break</code> to exit a loop early when needed</li>
+        <li>Use <code>continue</code> to skip to the next iteration</li>
+        <li>Consider performance for large datasets (avoid nested loops when possible)</li>
+        <li>Be careful with modifying the array you're iterating over</li>
+    </ul>
+
+    <h3>Common Issues:</h3>
+    <ul>
+        <li>Off-by-one errors (using <= instead of < or vice versa)</li>
+        <li>Infinite loops due to incorrect conditions</li>
+        <li>Forgetting to increment/decrement the counter</li>
+        <li>Using the wrong loop type for the task</li>
+    </ul>
+
+    <h2 id="switch-cases">5. Switch Cases</h2>
+
+    <h3>Basic Structure</h3>
+    <pre><code>switch ($variable) {
+    case 'value1':
+        // Code for value1
+        break;
+    case 'value2':
+        // Code for value2
+        break;
+    default:
+        // Default code
+        break;
+}</code></pre>
+
+    <h3>Fall-through Behavior</h3>
+    <pre><code>// Without break, execution "falls through" to the next case
+switch ($day) {
+    case 'Saturday':
+    case 'Sunday':
+        echo 'Weekend';
+        break;
+    default:
+        echo 'Weekday';
+        break;
+}</code></pre>
+
+    <h3>Best Practices:</h3>
+    <ul>
+        <li>Always include a <code>default</code> case to handle unexpected values</li>
+        <li>Use <code>break</code> statements to prevent fall-through (unless intentional)</li>
+        <li>Consider using match expressions (PHP 8+) for simpler cases</li>
+        <li>Use type-safe comparisons (switch uses <code>==</code> not <code>===</code>)</li>
+        <li>Group related cases together when they share the same code</li>
+        <li>Consider if-else if the switch has only a few cases</li>
+    </ul>
+
+    <h3>PHP 8 Match Expression:</h3>
+    <pre><code>// Match expression (PHP 8+) - more concise and uses strict comparison
+$result = match ($status) {
+    200, 300 => 'Success',
+    400, 500 => 'Error',
+    default => 'Unknown',
+};</code></pre>
+
+    <h2 id="common-pitfalls">Common PHP Pitfalls to Review</h2>
+
+    <ol>
+        <li><strong>Not checking for errors</strong>
+            <ul>
+                <li>Always check return values of functions that can fail</li>
+                <li>Use try-catch blocks for exception handling</li>
+            </ul>
+        </li>
+        <li><strong>Security vulnerabilities</strong>
+            <ul>
+                <li>SQL Injection: Use prepared statements</li>
+                <li>XSS: Escape output with htmlspecialchars()</li>
+                <li>CSRF: Implement token validation</li>
+            </ul>
+        </li>
+        <li><strong>Not validating input</strong>
+            <ul>
+                <li>Always validate and sanitize user input</li>
+                <li>Don't trust $_POST, $_GET, $_REQUEST data</li>
+            </ul>
+        </li>
+        <li><strong>Poor error handling</strong>
+            <ul>
+                <li>Set appropriate error reporting in development</li>
+                <li>Log errors in production, display user-friendly messages</li>
+            </ul>
+        </li>
+        <li><strong>Not using strict types</strong>
+            <ul>
+                <li>Consider using <code>declare(strict_types=1);</code> at the top of files</li>
+                <li>Be aware of PHP's type juggling behavior</li>
+            </ul>
+        </li>
+        <li><strong>Inconsistent coding style</strong>
+            <ul>
+                <li>Follow a coding standard (PSR-12 recommended)</li>
+                <li>Use consistent naming conventions</li>
+            </ul>
+        </li>
+        <li><strong>Not using available language features</strong>
+            <ul>
+                <li>Use null coalescing operator (??) instead of isset() ternary</li>
+                <li>Use type hints and return types for functions</li>
+                <li>Consider newer PHP features when appropriate</li>
+            </ul>
+        </li>
+        <li><strong>Hardcoding values</strong>
+            <ul>
+                <li>Use constants or configuration files for repeated values</li>
+                <li>Don't hardcode database credentials or API keys</li>
+            </ul>
+        </li>
+        <li><strong>Not handling edge cases</strong>
+            <ul>
+                <li>Empty arrays, null values, zero values</li>
+                <li>Invalid input, unexpected data types</li>
+            </ul>
+        </li>
+        <li><strong>Inefficient database queries</strong>
+            <ul>
+                <li>Avoid N+1 query problems</li>
+                <li>Use proper indexing</li>
+                <li>Don't select more data than needed</li>
+            </ul>
+        </li>
+    </ol>
+</body>
+</html>
+
